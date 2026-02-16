@@ -37,6 +37,7 @@ export default function StockSearch() {
         .then((res) => res.json())
         .then((data) => {
           setOptions(data.result || [])
+          console.log('Search results:', data.result)
         })
         .finally(() => setLoading(false))
     }, 500)
@@ -82,9 +83,10 @@ export default function StockSearch() {
       )}
       renderOption={(props, option) => {
         const isFavorite = favorites.includes(option.symbol)
+        const { key, ...otherProps } = props
 
         return (
-          <li {...props}>
+          <li key={key} {...otherProps}>
             <Box
               sx={{
                 display: 'flex',

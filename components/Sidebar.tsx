@@ -9,7 +9,6 @@ import {
   ListItemText,
   Divider,
   Typography,
-  TextField,
 } from '@mui/material'
 
 import DashboardIcon from '@mui/icons-material/Dashboard'
@@ -20,6 +19,7 @@ import StockSearch from './StockSearch'
 
 import { useAppStore } from '@/store/useAppStore'
 import { NavigationTab } from '@/types/navigation'
+import Favorites from './Favorites'
 
 const drawerWidth = 260
 
@@ -63,30 +63,7 @@ export default function Sidebar() {
 
         {/* Favorites */}
         {favorites.length > 0 && (
-          <>
-            <Typography
-              variant="caption"
-              sx={{ mt: 2, display: 'block' }}
-            >
-              Favorites
-            </Typography>
-
-            <List dense>
-                {favorites.map((fav) => (
-                    <ListItemButton
-                    key={fav}
-                    onClick={() => setSelectedStock(fav)}
-                    sx={{
-                        borderRadius: 1,
-                        mb: 0.5,
-                    }}
-                    >
-                    <ListItemText primary={fav} />
-                    </ListItemButton>
-                ))}
-                </List>
-
-          </>
+          <Favorites />
         )}
 
         <Divider sx={{ my: 2 }} />

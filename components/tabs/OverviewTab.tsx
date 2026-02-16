@@ -2,6 +2,7 @@
 
 import { Box, Typography } from '@mui/material'
 import { useAppStore } from '@/store/useAppStore'
+import StockChart from '../StockChart'
 
 export default function OverviewTab() {
   const { selectedStock } = useAppStore()
@@ -16,16 +17,7 @@ export default function OverviewTab() {
         {selectedStock} Overview
       </Typography>
 
-      <Box
-        sx={{
-          height: 400,
-          bgcolor: 'background.paper',
-          borderRadius: 2,
-          p: 2,
-        }}
-      >
-        Chart Area (TradingView will go here)
-      </Box>
+      <StockChart symbol={selectedStock} />
 
       <Box
         sx={{
@@ -35,7 +27,7 @@ export default function OverviewTab() {
           p: 2,
         }}
       >
-        AI Analysis Output
+        AI Analysis Output (Next Step)
       </Box>
     </Box>
   )
