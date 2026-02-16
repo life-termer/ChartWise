@@ -203,15 +203,21 @@ const StockChart = forwardRef<StockChartHandle, Props>(function StockChart(
       return
     }
 
-    seriesRef.current?.setData(data.candles)
-    const closes = data.candles.map((c: CandlestickData) => c.close)
+    const candles = Array.isArray(data?.candles) ? data.candles : []
+    if (candles.length === 0) {
+      setError('No candle data available for this symbol.')
+      return
+    }
+
+    seriesRef.current?.setData(candles)
+    const closes = candles.map((c: CandlestickData) => c.close)
 
     const emaValues = EMA.calculate({
       period: 20,
       values: closes,
     })
 
-    const emaFormatted = data.candles
+    const emaFormatted = candles
       .slice(20 - 1)
       .map((c: CandlestickData, i: number) => ({
         time: c.time,
@@ -226,7 +232,7 @@ const StockChart = forwardRef<StockChartHandle, Props>(function StockChart(
       values: closes,
     })
 
-    const rsiFormatted = data.candles.map((c: CandlestickData, i: number) => {
+    const rsiFormatted = candles.map((c: CandlestickData, i: number) => {
       if (i < rsiPeriod) {
         return { time: c.time }
       }
@@ -238,8 +244,8 @@ const StockChart = forwardRef<StockChartHandle, Props>(function StockChart(
 
     rsiSeriesRef.current?.setData(rsiFormatted as any)
 
-    const latest = data.candles[data.candles.length - 1]
-    const last30 = data.candles.slice(-30).map((c: CandlestickData) => ({
+    const latest = candles[candles.length - 1]
+    const last30 = candles.slice(-30).map((c: CandlestickData) => ({
       time: c.time,
       open: c.open,
       high: c.high,
@@ -378,10 +384,15 @@ const StockChart = forwardRef<StockChartHandle, Props>(function StockChart(
           </Button>
         </Box>
 
-        <Box
+        
+      </Box>
+
+      <Box ref={chartContainerRef} />
+      <Box ref={rsiContainerRef} sx={{ mt: 2, mb: 2 }} />
+      <Box
           sx={{
             minWidth: 320,
-            maxWidth: 1000,
+            maxWidth: "100%",
             bgcolor: 'background.paper',
             borderRadius: 2,
             p: 2,
@@ -402,10 +413,6 @@ const StockChart = forwardRef<StockChartHandle, Props>(function StockChart(
             </Typography>
           )}
         </Box>
-      </Box>
-
-      <Box ref={chartContainerRef} />
-      <Box ref={rsiContainerRef} sx={{ mt: 2 }} />
     </Box>
   )
 })
