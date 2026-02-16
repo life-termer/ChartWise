@@ -4,24 +4,58 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url)
 
   const symbol = searchParams.get('symbol')
-  const resolution = searchParams.get('resolution') || 'D'
+  const intervalParam =
+    searchParams.get('interval') || searchParams.get('resolution') || '1h'
 
   if (!symbol) {
-    return NextResponse.json({ s: 'no_data' })
+    return NextResponse.json({ status: 'error' })
   }
-
-  const to = Math.floor(Date.now() / 1000)
-  const from = to - 60 * 60 * 24 * 60 // last 60 days
 
   try {
     const res = await fetch(
-      `https://finnhub.io/api/v1/stock/candle?symbol=${symbol}&resolution=${resolution}&from=${from}&to=${to}&token=${process.env.FINNHUB_API_KEY}`
+      `https://api.twelvedata.com/time_series?symbol=${symbol}&interval=${mapResolution(
+        intervalParam
+      )}&outputsize=500&apikey=${process.env.TWELVEDATA_API_KEY}`
     )
 
     const data = await res.json()
 
-    return NextResponse.json(data)
+    if (!data.values) {
+      return NextResponse.json({ status: 'no_data' })
+    }
+
+    // Convert to Lightweight Charts format
+    const formatted = data.values
+      .map((item: any) => ({
+        time: Math.floor(new Date(item.datetime).getTime() / 1000),
+        open: parseFloat(item.open),
+        high: parseFloat(item.high),
+        low: parseFloat(item.low),
+        close: parseFloat(item.close),
+      }))
+      .reverse()
+
+    return NextResponse.json({ status: 'ok', candles: formatted })
   } catch (err) {
-    return NextResponse.json({ s: 'error' })
+    return NextResponse.json({ status: 'error' })
+  }
+}
+
+function mapResolution(res: string) {
+  
+  switch (res) {
+    case '5':
+      return '5min'
+    case '15':
+      return '15min'
+    case '60':
+      return '1h'
+    case 'W':
+      return '1week'
+    case 'M':
+      return '1month'
+    case 'D':
+    default:
+      return '1day'
   }
 }
