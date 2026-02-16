@@ -30,6 +30,7 @@ export default function OverviewTab() {
   const [isPatternLoading, setIsPatternLoading] = useState(false)
   const [shares, setShares] = useState('')
   const [entryPrice, setEntryPrice] = useState('')
+  const [stopLoss, setStopLoss] = useState('')
   const chartRef = useRef<StockChartHandle | null>(null)
 
   if (!selectedStock) {
@@ -61,14 +62,32 @@ export default function OverviewTab() {
             fullWidth
             onClick={async () => {
               if (!selectedStock) return
+              const images = chartRef.current?.getChartImages?.()
+              if (!images?.mainChart || !images?.rsiChart) {
+                addStockAnalysisMessage({
+                  id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+                  symbol: selectedStock,
+                  text: 'Chart images not ready. Please try again.',
+                  createdAt: Date.now(),
+                })
+                return
+              }
+
+              const stockData = chartRef.current?.getStockData?.()
+
               setIsLoading(true)
               try {
                 const res = await fetch('/api/stock-analysis', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ symbol: selectedStock }),
+                  body: JSON.stringify({
+                    mainChart: images.mainChart,
+                    rsiChart: images.rsiChart,
+                    ...stockData,
+                  }),
                 })
                 const data = await res.json()
+                console.log('stockData:', stockData)
 
                 if (!res.ok) {
                   throw new Error(
@@ -122,6 +141,13 @@ export default function OverviewTab() {
               onChange={(e) => setEntryPrice(e.target.value)}
             />
 
+            <TextField
+              size="small"
+              label="Stop loss"
+              value={stopLoss}
+              onChange={(e) => setStopLoss(e.target.value)}
+            />
+
             <Button
               variant="outlined"
               onClick={async () => {
@@ -146,6 +172,7 @@ export default function OverviewTab() {
                       symbol: selectedStock,
                       shares,
                       entryPrice,
+                      stopLoss,
                       resolution: chartRef.current?.getResolution?.(),
                       mainChart: images.mainChart,
                       rsiChart: images.rsiChart,
@@ -217,8 +244,9 @@ export default function OverviewTab() {
                     primary={
                       <Box
                         sx={{
-                          '& p': { m: 0, mb: 1, lineHeight: 1.5 },
-                          '& ul': { pl: 2, mb: 1, mt: 0 },
+                          fontSize: 15,
+                          '& p': { m: 0, mb: 0.75, lineHeight: 1.4 },
+                          '& ul': { pl: 2, mb: 0.75, mt: 0 },
                           '& li': { mb: 0.5 },
                           '& strong': { fontWeight: 600 },
                         }}

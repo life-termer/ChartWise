@@ -36,6 +36,7 @@ export interface StockChartHandle {
     rsiChart?: string
   }
   getResolution: () => string
+  getStockData: () => any
 }
 
 const StockChart = forwardRef<StockChartHandle, Props>(function StockChart(
@@ -74,6 +75,7 @@ const StockChart = forwardRef<StockChartHandle, Props>(function StockChart(
       }
     },
     getResolution: () => resolution,
+    getStockData: () => latestChartDataRef.current,
   }))
 
   // Create chart once

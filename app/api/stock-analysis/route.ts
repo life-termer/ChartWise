@@ -1,11 +1,10 @@
 import { NextResponse } from 'next/server'
 
 const today = new Date()
-const SYSTEM_PROMPT = `You are ChartWise’s in-app market analyst. Use only the provided data, be concise, and avoid speculation. Provide balanced, data-driven insights with clear risk context. If data is stale, explicitly say so. Today is ${today.toLocaleDateString('en-GB')}.`
+const SYSTEM_PROMPT = `You are ChartWise's in-app technical analyst. Use only the provided images and user input. Identify chart patterns, key levels, and indicator signals. Keep it concise, practical, and balanced. If images are unclear, say so. Today is ${today.toLocaleDateString('en-GB')}. Always add: "Not financial advice."`
 
 export async function POST(req: Request) {
   const apiKey = process.env.OPENAI_API_KEY
-  const twelveDataKey = process.env.TWELVEDATA_API_KEY
 
   if (!apiKey) {
     return NextResponse.json(
@@ -14,98 +13,133 @@ export async function POST(req: Request) {
     )
   }
 
-  if (!twelveDataKey) {
-    return NextResponse.json(
-      { error: 'Missing TWELVEDATA_API_KEY' },
-      { status: 500 }
-    )
-  }
-
-  let symbol = ''
+  let payload: any = null
   try {
-    const body = await req.json()
-    symbol = body?.symbol?.toUpperCase?.() || ''
+    payload = await req.json()
   } catch {
-    symbol = ''
+    payload = null
   }
 
-  if (!symbol) {
-    return NextResponse.json({ error: 'Missing symbol' }, { status: 400 })
+  const mainChart = payload?.mainChart || ''
+  const rsiChart = payload?.rsiChart || ''
+  const resolution = payload?.resolution || ''
+  const asOf = payload?.asOf || ''
+  const latestClose = payload?.latestClose ?? null
+  const latestRsi = payload?.latestRsi ?? null
+  const latestEma = payload?.latestEma ?? null
+  const last30 = payload?.last30 || []
+
+  if (!mainChart || !rsiChart) {
+    return NextResponse.json(
+      { error: 'Missing chart images' },
+      { status: 400 }
+    )
   }
+
+  const USER_PROMPT = `
+The user provides:
+1) A screenshot of the price chart (candlestick chart).
+2) A screenshot of the RSI indicator.
+3) Structured stock data: \n${JSON.stringify(
+{ resolution, asOf, latestClose, latestRsi, latestEma, last30 },
+null,
+2
+)}\n.
+
+Analyze ONLY the information visible in the screenshots and provided data.
+Do NOT invent news or unseen historical data.
+
+Your objective:
+Deliver a structured, professional trading analysis with clear reasoning and actionable levels.
+
+---
+
+Analysis Requirements:
+
+1. Examine visible price action:
+   - Trend direction (uptrend, downtrend, range)
+   - Market structure (higher highs/lows, lower highs/lows)
+   - Breakouts or consolidations
+   - Reversal patterns if visible
+
+2. Historical Context:
+   - Infer trend strength and structure only from visible chart history.
+   - Avoid assumptions beyond the displayed timeframe.
+
+3. W.D. Gann Concepts (if applicable):
+   - Price symmetry
+   - Angles or geometric movement
+   - Time/price relationships
+   - Significant swing highs/lows alignment
+
+4. RSI Analysis:
+   - Overbought (>70) / Oversold (<30)
+   - Divergences (bullish or bearish)
+   - Momentum confirmation or weakening
+
+5. Market Sentiment (Chart-Based Only):
+   - Strong bullish momentum
+   - Distribution
+   - Accumulation
+   - Exhaustion
+
+6. Identify Trade Setup:
+   - Clear Buy / Sell / No Trade
+   - Entry zone
+   - Target(s)
+   - Stop-loss level
+   - Estimated risk/reward ratio
+
+7. Identify:
+   - Key support levels
+   - Key resistance levels
+
+8. Time Cycle Observations:
+   - Any visible rhythm or cyclical swing timing in price movement
+   - Only if clearly observable from chart
+
+---
+
+Reason step-by-step internally before giving conclusions.
+Keep explanations professional but concise.
+
+---
+
+Output Format:
+
+Price Action Analysis:
+[Analysis]
+
+W.D. Gann Perspective:
+[Analysis or “No clear Gann structure visible.”]
+
+RSI & Momentum:
+[Analysis]
+
+Support Levels:
+- Level 1:
+- Level 2:
+
+Resistance Levels:
+- Level 1:
+- Level 2:
+
+Trade Setup:
+Signal: [Buy / Sell / No Trade]
+Entry:
+Target 1:
+Target 2:
+Stop-Loss:
+Risk/Reward Estimate:
+
+Time Cycle Notes:
+[Brief comment or “No clear cycle detected.”]
+
+Final Summary:
+[3–5 sentence trader-focused conclusion]
+`
 
   try {
-    const interval = '1day'
-    const outputsize = 200
-    const res = await fetch(
-      `https://api.twelvedata.com/time_series?symbol=${symbol}&interval=${interval}&outputsize=${outputsize}&apikey=${twelveDataKey}`
-    )
-
-    const data = await res.json()
-
-    if (!data.values) {
-      return NextResponse.json({ error: 'No data available' }, { status: 400 })
-    }
-
-    const candles = data.values
-      .map((item: any) => ({
-        time: Math.floor(new Date(item.datetime).getTime() / 1000),
-        open: parseFloat(item.open),
-        high: parseFloat(item.high),
-        low: parseFloat(item.low),
-        close: parseFloat(item.close),
-        volume: item.volume ? parseFloat(item.volume) : undefined,
-      }))
-      .reverse()
-
-    const closes = candles.map((c: any) => c.close)
-
-    const rsiPeriod = 14
-    const emaPeriod = 20
-
-    const rsiValues = calculateRSI(closes, rsiPeriod)
-    const emaValues = calculateEMA(closes, emaPeriod)
-
-    const latest = candles[candles.length - 1]
-    const prev = candles[candles.length - 2]
-
-    const latestClose = latest?.close ?? null
-    const prevClose = prev?.close ?? null
-    const dayChangePct =
-      latestClose != null && prevClose != null && prevClose !== 0
-        ? ((latestClose - prevClose) / prevClose) * 100
-        : null
-
-    const latestRsi = rsiValues.length ? rsiValues[rsiValues.length - 1] : null
-    const latestEma = emaValues.length ? emaValues[emaValues.length - 1] : null
-
-    const last30 = candles.slice(-30).map((c: any) => ({
-      time: c.time,
-      close: c.close,
-      volume: c.volume ?? null,
-    }))
-
-    const dataSummary = {
-      symbol,
-      asOf: new Date(latest?.time * 1000).toISOString(),
-      latestClose,
-      prevClose,
-      dayChangePct,
-      latestRsi,
-      latestEma,
-      last30,
-    }
-
-    const USER_PROMPT = `Task: Analyze the current ${symbol} stock chart using the provided data. Focus on trend direction, momentum, and risk. Use the RSI and EMA to support conclusions. Provide a concise, data-driven update under 200 words.
-
-Data (most recent candle is last):\n${JSON.stringify(dataSummary, null, 2)}\n
-Requirements:
-- Mention the latest close, day % change, and RSI/EMA readings.
-- Provide a short outlook for the next 1–4 weeks.
-- Include 2–3 key levels or conditions to watch.
-- If data is stale, note the as-of time.
-- Keep tone professional and balanced.
-- Add a brief disclaimer: “Not financial advice.”`
-
     const aiRes = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -116,7 +150,14 @@ Requirements:
         model: 'gpt-4o-mini',
         messages: [
           { role: 'system', content: SYSTEM_PROMPT },
-          { role: 'user', content: USER_PROMPT },
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: USER_PROMPT },
+              { type: 'image_url', image_url: { url: mainChart } },
+              { type: 'image_url', image_url: { url: rsiChart } },
+            ],
+          },
         ],
         temperature: 0.4,
       }),
@@ -147,60 +188,8 @@ Requirements:
     return NextResponse.json({ content: content || '' })
   } catch (error) {
     return NextResponse.json(
-      { error: 'Failed to generate stock analysis' },
+      { error: 'Failed to analyze stock chart' },
       { status: 500 }
     )
   }
-}
-
-function calculateRSI(values: number[], period: number) {
-  if (values.length <= period) return []
-
-  const rsi: number[] = []
-  let gains = 0
-  let losses = 0
-
-  for (let i = 1; i <= period; i++) {
-    const diff = values[i] - values[i - 1]
-    if (diff >= 0) gains += diff
-    else losses -= diff
-  }
-
-  gains /= period
-  losses /= period
-
-  rsi.push(100 - 100 / (1 + gains / losses))
-
-  for (let i = period + 1; i < values.length; i++) {
-    const diff = values[i] - values[i - 1]
-    const gain = diff > 0 ? diff : 0
-    const loss = diff < 0 ? -diff : 0
-
-    gains = (gains * (period - 1) + gain) / period
-    losses = (losses * (period - 1) + loss) / period
-
-    const rs = gains / losses
-    const value = 100 - 100 / (1 + rs)
-    rsi.push(value)
-  }
-
-  return rsi
-}
-
-function calculateEMA(values: number[], period: number) {
-  if (values.length < period) return []
-
-  const k = 2 / (period + 1)
-  const ema: number[] = []
-
-  const sma = values.slice(0, period).reduce((a, b) => a + b, 0) / period
-  ema.push(sma)
-
-  for (let i = period; i < values.length; i++) {
-    const prev = ema[ema.length - 1]
-    const next = values[i] * k + prev * (1 - k)
-    ema.push(next)
-  }
-
-  return ema
 }

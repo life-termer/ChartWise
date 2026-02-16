@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 
 const today = new Date()
-const SYSTEM_PROMPT = `You are ChartWise’s in-app technical analyst. Use only the provided images and data. Identify patterns and signal conditions only. Keep it very short. Do NOT give direct buy/sell commands. Today is ${today.toLocaleDateString('en-GB')}. Do not include "Not financial advice."`
+const SYSTEM_PROMPT = `You are ChartWise’s in-app technical analyst. Use only the provided images and data. Identify patterns and signal conditions only. Keep it very short. Do not include "Not financial advice."`
 
 export async function POST(req: Request) {
   const apiKey = process.env.OPENAI_API_KEY
@@ -37,18 +37,38 @@ export async function POST(req: Request) {
     )
   }
 
-  const USER_PROMPT = `Task: Provide a very short pattern/signal check for ${symbol} using the chart + RSI images and the data below. Only patterns and signal conditions (no trade setup).
-
-Data:\n${JSON.stringify(
-  { resolution, asOf, latestClose, latestRsi, latestEma, last30 },
-    null,
-    2
-  )}\n
-Requirements:
-- One sentence response.
-- Focus on patterns and RSI signal (overbought/oversold/neutral).
-- Include 1 key level if visible.
-- If data is stale, say so.`
+const USER_PROMPT = `
+The user provides two screenshots:
+1) Price chart (candlesticks)
+2) RSI indicator chart
+and the following data:\n${JSON.stringify(
+{ resolution, asOf, latestClose, latestRsi, latestEma, last30 },
+null,
+2
+)}\n
+Your task:
+Analyze both images together and determine if there is a clear trading signal.
+Focus on:
+- Trend direction (uptrend, downtrend, range)
+- Key support/resistance levels
+- Breakouts or fakeouts
+- RSI overbought (>70) / oversold (<30)
+- RSI divergence (bullish or bearish)
+- Momentum strength or weakness
+Rules:
+- Be concise (maximum 3-4 sentences).
+- Only mention a trade idea if there is a HIGH-PROBABILITY setup.
+- If there is no clear signal, say: "No clear high-probability setup at the moment."
+- If there is a signal, clearly state:
+  - Direction (Buy / Sell)
+  - Reason (technical logic)
+  - Risk note (brief)
+Output format:
+Signal: [Buy / Sell / None]
+Analysis:
+[Short explanation]
+Confidence:
+[Low / Medium / High].`
 
   try {
     const aiRes = await fetch('https://api.openai.com/v1/chat/completions', {
