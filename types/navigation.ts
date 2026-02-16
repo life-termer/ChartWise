@@ -3,3 +3,4 @@ export type NavigationTab =
   | 'swing'
   | 'qa'
   | 'monitor'
+  | 'market-overview'
