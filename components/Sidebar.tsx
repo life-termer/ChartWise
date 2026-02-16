@@ -9,6 +9,7 @@ import {
   ListItemText,
   Divider,
   Typography,
+  Button,
 } from '@mui/material'
 
 import DashboardIcon from '@mui/icons-material/Dashboard'
@@ -83,6 +84,18 @@ export default function Sidebar() {
             </ListItemButton>
           ))}
         </List>
+
+        <Button
+          variant="outlined"
+          size="small"
+          sx={{ mt: 2 }}
+          onClick={async () => {
+            await fetch('/api/auth/logout', { method: 'POST' })
+            window.location.reload()
+          }}
+        >
+          Sign out
+        </Button>
       </Box>
     </Drawer>
   )

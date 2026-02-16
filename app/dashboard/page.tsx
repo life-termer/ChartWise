@@ -1,25 +1,14 @@
-'use client'
+import { cookies } from 'next/headers'
+import DashboardClient from '@/components/DashboardClient'
+import DashboardLogin from './DashboardLogin'
 
-import { Box } from '@mui/material'
-import Sidebar from '@/components/Sidebar'
-import TabRenderer from '@/components/TabRenderer'
+export default async function DashboardPage() {
+  const cookieStore = await cookies()
+  const auth = cookieStore.get('chartwise_auth')?.value
 
-export default function DashboardPage() {
-  return (
-    <Box sx={{ display: 'flex', height: '100vh' }}>
-      <Sidebar />
+  if (auth !== 'authorized') {
+    return <DashboardLogin />
+  }
 
-      <Box
-        component="main"
-        sx={{
-          flexGrow: 1,
-          bgcolor: 'background.default',
-          p: 3,
-          overflow: 'auto',
-        }}
-      >
-        <TabRenderer />
-      </Box>
-    </Box>
-  )
+  return <DashboardClient />
 }
