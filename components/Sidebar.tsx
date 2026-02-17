@@ -1,5 +1,7 @@
 'use client'
 
+import { useState } from 'react'
+
 import {
   Box,
   Drawer,
@@ -10,6 +12,7 @@ import {
   Divider,
   Typography,
   Button,
+  TextField,
 } from '@mui/material'
 
 import DashboardIcon from '@mui/icons-material/Dashboard'
@@ -45,6 +48,15 @@ export default function Sidebar() {
     setSelectedStock,
   } = useAppStore()
 
+  const [customSymbol, setCustomSymbol] = useState('')
+
+  const handleAddCustomSymbol = () => {
+    const symbol = customSymbol.trim().toUpperCase()
+    if (!symbol) return
+    setSelectedStock(symbol)
+    setCustomSymbol('')
+  }
+
   return (
     <Drawer
       variant="permanent"
@@ -61,6 +73,30 @@ export default function Sidebar() {
         <Typography variant="h6" gutterBottom>
           ChartWise
         </Typography>
+
+        <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
+          <TextField
+            size="small"
+            label="Custom stock"
+            value={customSymbol}
+            onChange={(e) => setCustomSymbol(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault()
+                handleAddCustomSymbol()
+              }
+            }}
+            fullWidth
+          />
+          <Button
+            variant="outlined"
+            size="small"
+            onClick={handleAddCustomSymbol}
+            sx={{ whiteSpace: 'nowrap' }}
+          >
+            Add
+          </Button>
+        </Box>
 
         <StockSearch />
 

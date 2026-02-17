@@ -15,8 +15,8 @@ export default function TabRenderer() {
       return <OverviewTab />
     case 'swing':
       return <SwingTab />
-    // case 'qa':
-    //   return <QATab />
+    case 'qa':
+      return <QATab />
     case 'monitor':
       return <MonitorTab />
     case 'market-overview':

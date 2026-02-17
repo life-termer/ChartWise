@@ -1,6 +1,7 @@
 import { AppRouterCacheProvider } from '@mui/material-nextjs/v14-appRouter'
 import { ThemeProvider, CssBaseline } from '@mui/material'
 import { theme } from '@/theme'
+import './globals.css'
 
 export const metadata = {
   title: 'ChartWise',

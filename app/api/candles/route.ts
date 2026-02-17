@@ -32,6 +32,7 @@ export async function GET(req: Request) {
         high: parseFloat(item.high),
         low: parseFloat(item.low),
         close: parseFloat(item.close),
+        volume: item.volume ? parseFloat(item.volume) : 0,
       }))
       .reverse()
 

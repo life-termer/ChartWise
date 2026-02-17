@@ -12,6 +12,8 @@ import {
   TextField,
   Typography,
 } from '@mui/material'
+import StarBorderIcon from '@mui/icons-material/StarBorder'
+import StarIcon from '@mui/icons-material/Star'
 import { useAppStore } from '@/store/useAppStore'
 import StockChart from '../StockChart'
 import { useRef, useState } from 'react'
@@ -22,6 +24,9 @@ import { StockChartHandle } from '../StockChart'
 export default function OverviewTab() {
   const {
     selectedStock,
+    favorites,
+    addFavorite,
+    removeFavorite,
     stockAnalysisMessages,
     addStockAnalysisMessage,
     removeStockAnalysisMessage,
@@ -32,16 +37,39 @@ export default function OverviewTab() {
   const [entryPrice, setEntryPrice] = useState('')
   const [stopLoss, setStopLoss] = useState('')
   const chartRef = useRef<StockChartHandle | null>(null)
+  const isPositionFieldsComplete =
+    !!shares.trim() && !!entryPrice.trim() && !!stopLoss.trim()
 
   if (!selectedStock) {
     return <Typography>Select a stock to see overview.</Typography>
   }
 
+  const isFavorite = favorites.includes(selectedStock)
+
   return (
     <Box>
-      <Typography variant="h5" gutterBottom>
-        {selectedStock} Overview
-      </Typography>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+        <Typography variant="h5">
+          {selectedStock} Overview
+        </Typography>
+        <IconButton
+          size="small"
+          onClick={() =>
+            isFavorite
+              ? removeFavorite(selectedStock)
+              : addFavorite(selectedStock)
+          }
+          aria-label={
+            isFavorite ? 'Remove from favorites' : 'Add to favorites'
+          }
+        >
+          {isFavorite ? (
+            <StarIcon color="warning" />
+          ) : (
+            <StarBorderIcon />
+          )}
+        </IconButton>
+      </Box>
 
       <Box sx={{ display: 'flex', gap: 2, alignItems: 'flex-start', flexWrap: 'wrap' }}>
         <Box sx={{ flex: 1, minWidth: 0 }}>
@@ -52,6 +80,8 @@ export default function OverviewTab() {
           sx={{
             width: 280,
             minWidth: 240,
+            height: 400,
+            marginTop: 7,
             bgcolor: 'background.paper',
             borderRadius: 2,
             p: 2,
@@ -123,7 +153,7 @@ export default function OverviewTab() {
           </Button>
 
           <Typography variant="subtitle1" gutterBottom>
-            Position & Pattern Analysis
+            Position Analysis
           </Typography>
 
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
@@ -207,9 +237,9 @@ export default function OverviewTab() {
                   setIsPatternLoading(false)
                 }
               }}
-              disabled={isPatternLoading}
+              disabled={isPatternLoading || !isPositionFieldsComplete}
             >
-              {isPatternLoading ? 'Analyzing patterns...' : 'Analyze patterns'}
+              {isPatternLoading ? 'Analyzing...' : 'Analyze'}
             </Button>
           </Box>
         </Box>

@@ -2,12 +2,19 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { NavigationTab } from '@/types/navigation'
 
+interface SwingPlanMessage {
+  id: string
+  text: string
+  createdAt: number
+}
+
 interface AppState {
   selectedStock: string | null
   activeTab: NavigationTab
   favorites: string[]
   marketOverviewMessages: MarketOverviewMessage[]
   stockAnalysisMessages: StockAnalysisMessage[]
+  swingPlanMessages: SwingPlanMessage[]
 
   setSelectedStock: (symbol: string) => void
   setActiveTab: (tab: NavigationTab) => void
@@ -17,6 +24,8 @@ interface AppState {
   removeMarketOverviewMessage: (id: string) => void
   addStockAnalysisMessage: (message: StockAnalysisMessage) => void
   removeStockAnalysisMessage: (id: string) => void
+  addSwingPlanMessage: (message: SwingPlanMessage) => void
+  removeSwingPlanMessage: (id: string) => void
 }
 
 export interface MarketOverviewMessage {
@@ -40,6 +49,18 @@ export const useAppStore = create<AppState>()(
       favorites: ['AAPL', 'TSLA'],
       marketOverviewMessages: [],
       stockAnalysisMessages: [],
+      swingPlanMessages: [],
+      addSwingPlanMessage: (message) =>
+        set({
+          swingPlanMessages: [message, ...get().swingPlanMessages],
+        }),
+
+      removeSwingPlanMessage: (id) =>
+        set({
+          swingPlanMessages: get().swingPlanMessages.filter(
+            (msg) => msg.id !== id
+          ),
+        }),
 
       setSelectedStock: (symbol) =>
        set({ selectedStock: symbol, activeTab: 'overview' }),
@@ -98,6 +119,7 @@ export const useAppStore = create<AppState>()(
         favorites: state.favorites,
         marketOverviewMessages: state.marketOverviewMessages,
         stockAnalysisMessages: state.stockAnalysisMessages,
+        swingPlanMessages: state.swingPlanMessages,
       }),
     }
   )

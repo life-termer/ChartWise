@@ -13,6 +13,7 @@ import {
   ColorType,
   CandlestickData,
   CandlestickSeries,
+  HistogramSeries,
   LineSeries,
   LineStyle,
   ISeriesApi,
@@ -20,11 +21,18 @@ import {
 import {
   Box,
   Button,
+  Checkbox,
+  FormControl,
+  InputLabel,
+  ListItemText,
+  MenuItem,
+  Select,
   ToggleButton,
   ToggleButtonGroup,
   Typography,
 } from '@mui/material'
 import { EMA, RSI } from 'technicalindicators'
+import ReactMarkdown from 'react-markdown'
 
 interface Props {
   symbol: string
@@ -54,11 +62,18 @@ const StockChart = forwardRef<StockChartHandle, Props>(function StockChart(
   const [autoPatternMessage, setAutoPatternMessage] = useState<string>('')
   const [autoPatternTime, setAutoPatternTime] = useState<number | null>(null)
   const [autoPatternLoading, setAutoPatternLoading] = useState(false)
+  const [indicatorSelections, setIndicatorSelections] = useState<string[]>([
+    'EMA',
+    'Volume',
+  ])
   const emaSeriesRef = useRef<ISeriesApi<'Line'> | null>(null)
+  const volumeSeriesRef = useRef<ISeriesApi<'Histogram'> | null>(null)
   const rsiSeriesRef = useRef<ISeriesApi<'Line'> | null>(null)
   const chartsDisposedRef = useRef(false)
   const syncingRef = useRef(false)
   const latestChartDataRef = useRef<any>(null)
+  const showEma = indicatorSelections.includes('EMA')
+  const showVolume = indicatorSelections.includes('Volume')
 
   useImperativeHandle(ref, () => ({
     getChartImages: () => {
@@ -100,6 +115,16 @@ const StockChart = forwardRef<StockChartHandle, Props>(function StockChart(
     emaSeriesRef.current = chartRef.current.addSeries(LineSeries, {
       color: '#2962FF',
       lineWidth: 2,
+    })
+
+    volumeSeriesRef.current = chartRef.current.addSeries(HistogramSeries, {
+      priceScaleId: 'volume',
+      color: 'rgba(34,197,94,0.6)',
+    })
+
+    chartRef.current.priceScale('volume').applyOptions({
+      scaleMargins: { top: 0.8, bottom: 0 },
+      visible: false,
     })
 
     rsiChartRef.current = createChart(rsiContainerRef.current, {
@@ -188,6 +213,14 @@ const StockChart = forwardRef<StockChartHandle, Props>(function StockChart(
     }
   }, [])
 
+  useEffect(() => {
+    emaSeriesRef.current?.applyOptions({ visible: showEma })
+  }, [showEma])
+
+  useEffect(() => {
+    volumeSeriesRef.current?.applyOptions({ visible: showVolume })
+  }, [showVolume])
+
   const fetchData = useCallback(async () => {
     if (!seriesRef.current) return
 
@@ -227,6 +260,21 @@ const StockChart = forwardRef<StockChartHandle, Props>(function StockChart(
       }))
 
     emaSeriesRef.current!.setData(emaFormatted)
+
+    const volumeFormatted = candles.map((c: CandlestickData) => {
+      const candle = c as CandlestickData & { volume?: number }
+      const volume = candle.volume ?? 0
+      return {
+        time: candle.time,
+        value: volume,
+        color:
+          candle.close >= candle.open
+            ? 'rgba(34,197,94,0.6)'
+            : 'rgba(239,68,68,0.6)',
+      }
+    })
+
+    volumeSeriesRef.current?.setData(volumeFormatted as any)
 
     const rsiPeriod = 14
     const rsiValues = RSI.calculate({
@@ -374,6 +422,7 @@ const StockChart = forwardRef<StockChartHandle, Props>(function StockChart(
             <ToggleButton value="30">30m</ToggleButton>
           </ToggleButtonGroup>
 
+
           <Button
             variant="outlined"
             size="small"
@@ -384,6 +433,37 @@ const StockChart = forwardRef<StockChartHandle, Props>(function StockChart(
           >
             Refresh
           </Button>
+
+          
+          <FormControl size="small" sx={{ minWidth: 160 }}>
+            <InputLabel id="indicators-label">Indicators</InputLabel>
+            <Select
+              labelId="indicators-label"
+              multiple
+              value={indicatorSelections}
+              onChange={(event) => {
+                const value = event.target.value
+                setIndicatorSelections(
+                  typeof value === 'string' ? value.split(',') : value
+                )
+              }}
+              label="Indicators"
+              renderValue={(selected) =>
+                (selected as string[]).length
+                  ? (selected as string[]).join(', ')
+                  : 'None'
+              }
+            >
+              <MenuItem value="EMA">
+                <Checkbox checked={showEma} />
+                <ListItemText primary="EMA" />
+              </MenuItem>
+              <MenuItem value="Volume">
+                <Checkbox checked={showVolume} />
+                <ListItemText primary="Volume" />
+              </MenuItem>
+            </Select>
+          </FormControl>
         </Box>
 
         
@@ -400,15 +480,23 @@ const StockChart = forwardRef<StockChartHandle, Props>(function StockChart(
             p: 2,
           }}
         >
-          <Typography
-            variant="body2"
-            color="text.secondary"
-            sx={{ whiteSpace: 'pre-line' }}
+          <Box
+            sx={{
+              color: 'text.secondary',
+              fontSize: '0.75rem',
+              whiteSpace: 'pre-line',
+            }}
           >
-            {autoPatternLoading
-              ? 'Analyzing...'
-              : autoPatternMessage || 'Waiting for next refresh.'}
-          </Typography>
+            {autoPatternLoading ? (
+              'Analyzing...'
+            ) : autoPatternMessage ? (
+              <div className="stockchart-markdown">
+                <ReactMarkdown>{autoPatternMessage}</ReactMarkdown>
+              </div>
+            ) : (
+              'Waiting for next refresh.'
+            )}
+          </Box>
           {autoPatternTime && (
             <Typography variant="caption" color="text.secondary">
               {new Date(autoPatternTime).toLocaleTimeString()}
